@@ -51,6 +51,7 @@ export const GET_RECIPE_INGREDIENTS = `
 
 export const GET_RECIPE_INGREDIENTS_LIMITED = `
   SELECT
+    id,
     name,
     recipe_id,
     quantity,
@@ -78,6 +79,24 @@ export const UPDATE_RECIPE = `
     prep_time = ?,
     cooking_time = ?,
     servings = ?
+  WHERE
+    id = ?;
+`;
+
+export const UPDATE_INGREDIENT = `
+  UPDATE
+    ingredients
+  SET
+    name = ?,
+    quantity = ?,
+    unit = ?
+  WHERE
+    id = ?;
+`;
+
+export const DELETE_INGREDIENT = `
+  DELETE FROM
+    ingredients
   WHERE
     id = ?;
 `;

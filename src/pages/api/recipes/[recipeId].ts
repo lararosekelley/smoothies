@@ -1,14 +1,17 @@
 import Joi from 'joi';
 import { NextApiHandler, NextApiRequest, NextApiResponse } from 'next';
-import { FieldInfo, OkPacket } from 'mysql';
+import { FieldInfo } from 'mysql';
 import { query } from '@/db/index';
 import { Recipe } from '@/db/schemas';
 import {
+  CREATE_INGREDIENTS,
   DELETE_RECIPE,
+  DELETE_INGREDIENT,
   GET_RECIPE,
   GET_RECIPE_INGREDIENTS,
   GET_RECIPE_INGREDIENTS_LIMITED,
   UPDATE_RECIPE,
+  UPDATE_INGREDIENT,
 } from '@/db/queries';
 import {
   httpHeaders,
@@ -88,6 +91,7 @@ const updateRecipe: NextApiHandler = async (
     title = currentRecipe.title,
     author = currentRecipe.author,
     description = currentRecipe.description,
+    ingredients = [],
     prepTime = currentRecipe.prepTime,
     cookingTime = currentRecipe.cookingTime,
     servings = currentRecipe.servings,
@@ -121,6 +125,70 @@ const updateRecipe: NextApiHandler = async (
       servings,
       recipeId,
     ]);
+
+    // Update ingredients for recipe; delete ones omitted and add new ones
+    const existingIds = currentIngredients.map(
+      (i: Record<string, unknown>) => i.id
+    ) as number[];
+    const updatedIds = ingredients
+      .filter(
+        (i: Record<string, unknown>) =>
+          typeof i.id === 'number' && existingIds.includes(i.id)
+      )
+      .map((i: Record<string, unknown>) => i.id) as number[];
+    const omittedIngredients = currentIngredients
+      .filter(
+        (i: Record<string, unknown>) =>
+          typeof i.id === 'number' && !updatedIds.includes(i.id)
+      )
+      .map((i: Record<string, unknown>) => i.id) as number[];
+
+    // Insert or update
+    for (const ingredient of ingredients) {
+      if (!updatedIds.includes(ingredient.id)) {
+        if (
+          !ingredient.name ||
+          typeof ingredient.quantity !== 'number' ||
+          !ingredient.unit
+        ) {
+          return res
+            .status(statusCodes.BAD_REQUEST)
+            .end(
+              'New ingredients are missing required fields: name, quantity, or number'
+            );
+        }
+
+        await query(CREATE_INGREDIENTS, [
+          [
+            [
+              ingredient.name,
+              Number.parseInt(recipeId as string),
+              ingredient.quantity,
+              ingredient.unit,
+            ],
+          ],
+        ]);
+      } else {
+        const currentIngredient = currentIngredients.filter(
+          (i: { id: number; name: string; quantity: number; unit: string }) =>
+            i.id === ingredient.id
+        )[0];
+
+        await query(UPDATE_INGREDIENT, [
+          ingredient.name || currentIngredient.name,
+          Number.parseInt(recipeId as string),
+          typeof ingredient.quantity === 'number'
+            ? ingredient.quantity
+            : currentIngredient.quantity,
+          ingredient.unit || currentIngredient.unit,
+        ]);
+      }
+    }
+
+    // Delete
+    for (const oi of omittedIngredients) {
+      await query(DELETE_INGREDIENT, oi);
+    }
 
     return res.json({ id: recipeId });
   } catch (e) {
