@@ -107,7 +107,11 @@ Update a recipe and its ingredients. Only provide the fields you want to update:
 $ http patch http://localhost:3000/api/recipes/1 title="Even better strawberry smoothie" --verbose
 ```
 
-Request body example (note that new ingredients as well as existing ingredients can be handled):
+In the request body example below, note that new ingredients as well as existing ingredients can be handled.
+
+1. Passing in the ID of an existing ingredient will update it with the other changes
+2. Creating a new object (no ID) will add a new ingredient
+3. If the ingredients array is provided, any existing ingredients that are omitted will be deleted automatically.
 
 ```json
 {

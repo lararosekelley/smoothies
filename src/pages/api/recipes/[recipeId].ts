@@ -126,68 +126,70 @@ const updateRecipe: NextApiHandler = async (
       recipeId,
     ]);
 
-    // Update ingredients for recipe; delete ones omitted and add new ones
-    const existingIds = currentIngredients.map(
-      (i: Record<string, unknown>) => i.id
-    ) as number[];
-    const updatedIds = ingredients
-      .filter(
-        (i: Record<string, unknown>) =>
-          typeof i.id === 'number' && existingIds.includes(i.id)
-      )
-      .map((i: Record<string, unknown>) => i.id) as number[];
-    const omittedIngredients = currentIngredients
-      .filter(
-        (i: Record<string, unknown>) =>
-          typeof i.id === 'number' && !updatedIds.includes(i.id)
-      )
-      .map((i: Record<string, unknown>) => i.id) as number[];
+    if (ingredients.length > 0) {
+      // Update ingredients for recipe; delete ones omitted and add new ones
+      const existingIds = currentIngredients.map(
+        (i: Record<string, unknown>) => i.id
+      ) as number[];
+      const updatedIds = ingredients
+        .filter(
+          (i: Record<string, unknown>) =>
+            typeof i.id === 'number' && existingIds.includes(i.id)
+        )
+        .map((i: Record<string, unknown>) => i.id) as number[];
+      const omittedIngredients = currentIngredients
+        .filter(
+          (i: Record<string, unknown>) =>
+            typeof i.id === 'number' && !updatedIds.includes(i.id)
+        )
+        .map((i: Record<string, unknown>) => i.id) as number[];
 
-    // Insert or update
-    for (const ingredient of ingredients) {
-      if (!updatedIds.includes(ingredient.id)) {
-        if (
-          !ingredient.name ||
-          typeof ingredient.quantity !== 'number' ||
-          !ingredient.unit
-        ) {
-          return res
-            .status(statusCodes.BAD_REQUEST)
-            .end(
-              'New ingredients are missing required fields: name, quantity, or number'
-            );
-        }
+      // Insert or update
+      for (const ingredient of ingredients) {
+        if (!updatedIds.includes(ingredient.id)) {
+          if (
+            !ingredient.name ||
+            typeof ingredient.quantity !== 'number' ||
+            !ingredient.unit
+          ) {
+            return res
+              .status(statusCodes.BAD_REQUEST)
+              .end(
+                'New ingredients are missing required fields: name, quantity, or number'
+              );
+          }
 
-        await query(CREATE_INGREDIENTS, [
-          [
+          await query(CREATE_INGREDIENTS, [
             [
-              ingredient.name,
-              Number.parseInt(recipeId as string),
-              ingredient.quantity,
-              ingredient.unit,
+              [
+                ingredient.name,
+                Number.parseInt(recipeId as string),
+                ingredient.quantity,
+                ingredient.unit,
+              ],
             ],
-          ],
-        ]);
-      } else {
-        const currentIngredient = currentIngredients.filter(
-          (i: { id: number; name: string; quantity: number; unit: string }) =>
-            i.id === ingredient.id
-        )[0];
+          ]);
+        } else {
+          const currentIngredient = currentIngredients.filter(
+            (i: { id: number; name: string; quantity: number; unit: string }) =>
+              i.id === ingredient.id
+          )[0];
 
-        await query(UPDATE_INGREDIENT, [
-          ingredient.name || currentIngredient.name,
-          Number.parseInt(recipeId as string),
-          typeof ingredient.quantity === 'number'
-            ? ingredient.quantity
-            : currentIngredient.quantity,
-          ingredient.unit || currentIngredient.unit,
-        ]);
+          await query(UPDATE_INGREDIENT, [
+            ingredient.name || currentIngredient.name,
+            Number.parseInt(recipeId as string),
+            typeof ingredient.quantity === 'number'
+              ? ingredient.quantity
+              : currentIngredient.quantity,
+            ingredient.unit || currentIngredient.unit,
+          ]);
+        }
       }
-    }
 
-    // Delete
-    for (const oi of omittedIngredients) {
-      await query(DELETE_INGREDIENT, oi);
+      // Delete
+      for (const oi of omittedIngredients) {
+        await query(DELETE_INGREDIENT, oi);
+      }
     }
 
     return res.json({ id: recipeId });
