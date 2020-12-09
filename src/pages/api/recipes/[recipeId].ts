@@ -161,6 +161,7 @@ const updateRecipe: NextApiHandler = async (
 
           await query(CREATE_INGREDIENTS, [
             [
+              // @ts-ignore
               [
                 ingredient.name,
                 Number.parseInt(recipeId as string),
