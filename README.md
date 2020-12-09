@@ -4,7 +4,7 @@
 
 ---
 
-Live demo available [here](TBD).
+Live demo available [here](https://smoothies-psi.vercel.app/api/recipes).
 
 ## Getting started
 
